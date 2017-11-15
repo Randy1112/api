@@ -60,111 +60,47 @@ function login() {
 function signup() {
     $request = \Slim\Slim::getInstance()->request();
     $data = json_decode($request->getBody());
-    $email=$data->email;
-    $name=$data->name;
     $username=$data->username;
     $password=$data->password;
     
     try {
         
-        $username_check = preg_match('~^[A-Za-z0-9_]{3,20}$~i', $username);
-        $emain_check = preg_match('~^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.([a-zA-Z]{2,4})$~i', $email);
-        $password_check = preg_match('~^[A-Za-z0-9!@#$%^&*()_]{6,20}$~i', $password);
-        
-        
-        if (strlen(trim($username))>0 && strlen(trim($password))>0 && strlen(trim($email))>0 && $emain_check>0 && $username_check>0 && $password_check>0)
-        {
+        if (strlen(trim($username))>0 && strlen(trim($password))>0) {
             $db = getDB();
             $userData = '';
-            $sql = "SELECT user_id FROM users WHERE username=:username or email=:email";
+            $sql = "SELECT user_id FROM user WHERE username=:username";
             $stmt = $db->prepare($sql);
-            $stmt->bindParam("username", $username,PDO::PARAM_STR);
-            $stmt->bindParam("email", $email,PDO::PARAM_STR);
+            $stmt->bindParam("username", $username, PDO::PARAM_STR);
             $stmt->execute();
-            $mainCount=$stmt->rowCount();
-            $created=time();
-            if($mainCount==0)
-            {
-                
+            $mainCount = $stmt->rowCount();
+            $created = time();
+            if ($mainCount == 0) {
+
                 /*Inserting user values*/
-                $sql1="INSERT INTO users(username,password,email,name)VALUES(:username,:password,:email,:name)";
+                $sql1 = "INSERT INTO user(username,password)VALUES(:username,:password)";
                 $stmt1 = $db->prepare($sql1);
-                $stmt1->bindParam("username", $username,PDO::PARAM_STR);
-                $password=hash('sha256',$data->password);
-                $stmt1->bindParam("password", $password,PDO::PARAM_STR);
-                $stmt1->bindParam("email", $email,PDO::PARAM_STR);
-                $stmt1->bindParam("name", $name,PDO::PARAM_STR);
+                $stmt1->bindParam("username", $username, PDO::PARAM_STR);
+                $password = hash('sha256', $data->password);
+                $stmt1->bindParam("password", $password, PDO::PARAM_STR);
                 $stmt1->execute();
-                
-                $userData=internalUserDetails($email);
-                
             }
-            
+
             $db = null;
-         
 
-            if($userData){
-               $userData = json_encode($userData);
-                echo '{"userData": ' .$userData . '}';
+
+            if ($userData) {
+                $userData = json_encode($userData);
+                echo '{"userData": ' . $userData . '}';
             } else {
-               echo '{"error":{"text":"Enter valid data"}}';
+                echo '{"error":{"text":"Enter valid data NCNBVCNVBC"}}';
             }
 
-           
+
         }
         else{
-            echo '{"error":{"text":"Enter valid data"}}';
+            echo '{"error":{"text":"Enter valid data lqkjsfhlk"}}';
         }
     }
-    catch(PDOException $e) {
-        echo '{"error":{"text":'. $e->getMessage() .'}}';
-    }
-}
-
-function email() {
-    $request = \Slim\Slim::getInstance()->request();
-    $data = json_decode($request->getBody());
-    $email=$data->email;
-
-    try {
-       
-        $email_check = preg_match('~^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.([a-zA-Z]{2,4})$~i', $email);
-       
-        if (strlen(trim($email))>0 && $email_check>0)
-        {
-            $db = getDB();
-            $userData = '';
-            $sql = "SELECT user_id FROM emailUsers WHERE email=:email";
-            $stmt = $db->prepare($sql);
-            $stmt->bindParam("email", $email,PDO::PARAM_STR);
-            $stmt->execute();
-            $mainCount=$stmt->rowCount();
-            $created=time();
-            if($mainCount==0)
-            {
-                
-                /*Inserting user values*/
-                $sql1="INSERT INTO emailUsers(email)VALUES(:email)";
-                $stmt1 = $db->prepare($sql1);
-                $stmt1->bindParam("email", $email,PDO::PARAM_STR);
-                $stmt1->execute();
-                
-                
-            }
-            $userData=internalEmailDetails($email);
-            $db = null;
-            if($userData){
-               $userData = json_encode($userData);
-                echo '{"userData": ' .$userData . '}';
-            } else {
-               echo '{"error":{"text":"Enter valid dataaaa"}}';
-            }
-        }
-        else{
-            echo '{"error":{"text":"Enter valid data"}}';
-        }
-    }
-    
     catch(PDOException $e) {
         echo '{"error":{"text":'. $e->getMessage() .'}}';
     }
@@ -176,7 +112,7 @@ function internalUserDetails($input) {
     
     try {
         $db = getDB();
-        $sql = "SELECT user_id, name, email, username FROM users WHERE username=:input or email=:input";
+        $sql = "SELECT user_id, username FROM users WHERE username=:input";
         $stmt = $db->prepare($sql);
         $stmt->bindParam("input", $input,PDO::PARAM_STR);
         $stmt->execute();
@@ -322,9 +258,3 @@ function feedDelete(){
     
 }
 
-
-
-
-
-
-?>
