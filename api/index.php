@@ -7,6 +7,9 @@ $app = new \Slim\Slim();
 
 $app->post('/login','login'); /* User login */
 $app->post('/signup','signup'); /* User Signup  */
+$app->post('/membres','membres'); /* User Membre */
+$app->post('/modifierProfil','modifierProfil'); /* Modifier profil */
+$app->post('/deleteUser','deleteUser');
 $app->post('/feed','feed'); /* User Feeds  */
 $app->post('/feedUpdate','feedUpdate'); /* User Feeds  */
 $app->post('/feedDelete','feedDelete'); /* User Feeds  */
@@ -16,22 +19,88 @@ $app->run();
 
 /************************* USER LOGIN *************************************/
 /* ### User login ### */
+
+function deleteUser(){
+    $request = \Slim\Slim::getInstance()->request();
+    $data = json_decode($request->getBody());
+
+    $data;
+
+    $db = getDB();
+    $sql = "DELETE FROM user WHERE user_id =:user_id";
+    $stmt = $db->prepare($sql);
+    $stmt->bindParam(':user_id', $data);
+    $stmt->execute();
+
+    $db = null;
+
+    echo json_encode($data);
+}
+
+function modifierProfil(){
+    $request = \Slim\Slim::getInstance()->request();
+    $data = json_decode($request->getBody());
+
+    $id = $data->user_id;
+    $description = $data->description;
+    $img = $data->user_img_url;
+
+    $db = getDB();
+    $sql = "UPDATE user SET description='" . addslashes($description) . "', user_img_url='" . addslashes($img) . "' WHERE user_id ='" . $id . "'";
+    $stmt = $db->prepare($sql);
+    $stmt->execute();
+
+    $sql2 = "SELECT * FROM user WHERE user_id ='" . $id . "'";
+    $stmt2 = $db->prepare($sql2);
+    $stmt2->execute();
+    $data = $stmt2->fetch(PDO::FETCH_OBJ);
+
+    $db = null;
+
+    echo json_encode($data);
+
+}
+
+function membres(){
+    $db = getDB();
+    $data = '';
+    //$array = [];
+    $sql = "SELECT user_id as id, username, description, user_img_url FROM user";
+    $stmt = $db->prepare($sql);
+    $stmt->execute();
+    $membres = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+    $db = null;
+    /*
+    if($data){
+        foreach($membres as $membre){
+            $array[] = $membre;
+        }
+        $array = json_encode($array);
+        echo '{"membresTableau": ' . $array . '}';
+    } else {
+        echo '{"error":{"text":"Vous n\'avez pas pu récupérer la liste des membres"}}';
+    }*/
+    $array = json_encode($membres);
+
+    echo $array;
+}
+
 function login() {
     
     $request = \Slim\Slim::getInstance()->request();
     $data = json_decode($request->getBody());
-    
+
     try {
-        
         $db = getDB();
         $userData ='';
-        $sql = "SELECT user_id, name, email, username FROM users WHERE (username=:username or email=:username) and password=:password ";
+        $sql = "SELECT user_id, username, description, user_img_url FROM user WHERE username=:username and password=:password ";
+
         $stmt = $db->prepare($sql);
-        $stmt->bindParam("username", $data->username, PDO::PARAM_STR);
-        $password=hash('sha256',$data->password);
-        $stmt->bindParam("password", $password, PDO::PARAM_STR);
+        $stmt->bindParam(':username', $data->username);
+        $password = hash('sha256', $data->password);
+        $stmt->bindParam(':password', $password);
         $stmt->execute();
-        $mainCount=$stmt->rowCount();
         $userData = $stmt->fetch(PDO::FETCH_OBJ);
         
         if(!empty($userData))
@@ -42,17 +111,17 @@ function login() {
         
         $db = null;
          if($userData){
-               $userData = json_encode($userData);
-                echo '{"userData": ' .$userData . '}';
-            } else {
-               echo '{"error":{"text":"Bad request wrong username and password"}}';
-            }
-
-           
+             $userData = json_encode($userData);
+             //echo '{"userData": ' . $userData . '}';
+             echo $userData;
+         } else {
+             echo 'false';
+         }
     }
     catch(PDOException $e) {
         echo '{"error":{"text":'. $e->getMessage() .'}}';
     }
+
 }
 
 
@@ -62,6 +131,9 @@ function signup() {
     $data = json_decode($request->getBody());
     $username=$data->username;
     $password=$data->password;
+    $description=$data->description;
+    $photo=$data->user_img_url;
+
     
     try {
         
@@ -73,20 +145,19 @@ function signup() {
             $stmt->bindParam("username", $username, PDO::PARAM_STR);
             $stmt->execute();
             $mainCount = $stmt->rowCount();
-            $created = time();
             if ($mainCount == 0) {
-
                 /*Inserting user values*/
-                $sql1 = "INSERT INTO user(username,password)VALUES(:username,:password)";
+                $sql1 = "INSERT INTO user(username,password, description, user_img_url)VALUES(:username,:password,:description,:user_img_url)";
                 $stmt1 = $db->prepare($sql1);
                 $stmt1->bindParam("username", $username, PDO::PARAM_STR);
                 $password = hash('sha256', $data->password);
                 $stmt1->bindParam("password", $password, PDO::PARAM_STR);
+                $stmt1->bindParam("description", $description, PDO::PARAM_STR);
+                $stmt1->bindParam("user_img_url", $photo, PDO::PARAM_STR);
                 $stmt1->execute();
             }
 
             $db = null;
-
 
             if ($userData) {
                 $userData = json_encode($userData);
@@ -94,7 +165,6 @@ function signup() {
             } else {
                 echo '{"error":{"text":"Enter valid data NCNBVCNVBC"}}';
             }
-
 
         }
         else{
@@ -162,8 +232,6 @@ function feed(){
             else{
                 echo '{"feedData": "" }';
             }
-            
-
 
         } else{
             echo '{"error":{"text":"No access"}}';
@@ -190,8 +258,6 @@ function feedUpdate(){
     try {
          
         if($systemToken == $token){
-         
-            
             $feedData = '';
             $db = getDB();
             $sql = "INSERT INTO feed ( feed, created, user_id_fk) VALUES (:feed,:created,:user_id)";
